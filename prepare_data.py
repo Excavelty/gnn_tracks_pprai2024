@@ -35,7 +35,7 @@ def prepare_graph_from_file(hits_file_path, tracks_file_path):
     filter = df['good/duplicate/fake'] == 'good'
     
     tracks_strings = df.where(filter)['Hits_ID'].tolist()
-    tracks_lists = [json.loads(track_string.replace(',]', ']')) for track_string in tracks_strings]
+    tracks_lists = [json.loads(str(track_string).replace(',]', ']')) for track_string in tracks_strings]
 
     edge_list = list()
 
@@ -72,8 +72,10 @@ def prepare_data_from_file(hits_file_path, tracks_file_path):
     df = pd.read_csv(tracks_file_path, engine='python', delimiter=',')
     filter = df['good/duplicate/fake'] == 'good'
     
-    tracks_strings = df.where(filter)['Hits_ID'].tolist()
-    tracks_lists = [json.loads(track_string.replace(',]', ']')) for track_string in tracks_strings]
+    tracks_strings = df.where(filter)['Hits_ID'].dropna().tolist()
+    print(tracks_strings[0:3])
+
+    tracks_lists = [json.loads(str(track_string).replace(',]', ']')) for track_string in tracks_strings]
 
     edge_list = list()
 

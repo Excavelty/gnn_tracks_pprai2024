@@ -4,11 +4,11 @@ import torch
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch_geometric.transforms as T
-from torch_geometric.nn import SAGEConv, GCNConv, GATConv, GatedGraphConv
+from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
 
 def train_model(model, optimizer, data_train):
-    num_of_epochs = 10
+    num_of_epochs = 100
     
     model.train()
     
@@ -56,9 +56,9 @@ def train_model(model, optimizer, data_train):
             print("####")
             print(f'Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
             print(f'Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
-            print(f'Precision = TP / (TP + FN) = {tp / (tp + fn)}')
+            print(f'Precision = TP / (TP + FP) = {tp / (tp + fp)}')
             print(f'Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
-            print(f'Accuracy = TP + TN / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
+            print(f'Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
             print("####")
 
 # TBA
@@ -77,6 +77,7 @@ class SAGEConvModel(torch.nn.Module):
         x = self.conv2(x, edge_index)
         x = F.relu(x)
         x = self.conv3(x, edge_index)
+        x = F.relu(x)
 
         return x
 
@@ -93,22 +94,21 @@ class GCNConvModel(torch.nn.Module):
         x = self.conv2(x, edge_index)
         x = F.relu(x)
         x = self.conv3(x, edge_index)
+        x = F.relu(x)
 
         return x
 
-class GATConvModel(torch.nn.Module):
+class GRUModel(torch.nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = GATConv(3, channels)
-        self.conv2 = GATConv(channels, channels)
-        self.conv3 = GATConv(channels, channels)
+        self.gru1 = GatedGraphConv(channels, 10)
 
     def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
+        x = self.gru1(x, edge_index)
         x = F.relu(x)
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
-        x = self.conv3(x, edge_index)
+        # x = self.gru2(x, edge_index)
+        # x = F.relu(x)
+        # x = self.gru3(x, edge_index)
 
         return x 
 
@@ -123,10 +123,10 @@ class Classifier(torch.nn.Module):
         return (from_edges * to_edges).sum(dim=-1)
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, gnn_model):
         super().__init__()
 
-        self.GNN = GatedGraphConv(hidden_channels, 10)
+        self.GNN = gnn_model
         self.Classifier = Classifier()
 
     def forward(self, data):
@@ -137,15 +137,15 @@ class Model(torch.nn.Module):
 
 if __name__ == '__main__':
     # training based on single event
-    # data_train, data_test, data_val = prepare_graph_from_file(hits_file_path='..\odd_output\odd_output\event000000000-hits.csv',
-    #                                                           tracks_file_path='..\odd_output\odd_output\event000000000-tracks_ambi.csv')
+    # data_train, data_test, data_val = prepare_graph_from_file(hits_file_path='..\odd_output\event000000000-hits.csv',
+      #                                                        tracks_file_path='..\odd_output\event000000000-tracks_ambi.csv')
 
     # connecting events
-    data_train, data_test, data_val = prepare_graph_from_multiple_files(path='../odd_output/odd_output', number_of_files=10)
+    data_train, data_test, data_val = prepare_graph_from_multiple_files(path='../odd_output', number_of_files=1)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = Model(hidden_channels=256).to(device)
+    model = Model(GRUModel(channels=128)).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(model, optimizer, data_train)
