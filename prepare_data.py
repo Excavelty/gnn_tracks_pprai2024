@@ -73,7 +73,6 @@ def prepare_data_from_file(hits_file_path, tracks_file_path):
     filter = df['good/duplicate/fake'] == 'good'
     
     tracks_strings = df.where(filter)['Hits_ID'].dropna().tolist()
-    print(tracks_strings[0:3])
 
     tracks_lists = [json.loads(str(track_string).replace(',]', ']')) for track_string in tracks_strings]
 
@@ -126,8 +125,6 @@ def prepare_graph_from_multiple_files(path, number_of_files):
     
     node_features = torch.tensor([x_all, y_all, z_all], dtype=torch.float).t()
     edge_index = torch.tensor(edge_all, dtype=torch.long).t()
-
-    print(edge_index.size())
 
     data = Data(node_features, edge_index)
     print(data)

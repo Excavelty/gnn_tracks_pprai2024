@@ -4,6 +4,7 @@ import torch
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch_geometric.transforms as T
+from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
 
@@ -12,9 +13,11 @@ def train_model(model, optimizer, data_train):
     
     model.train()
     
+    print(f'Training model for {num_of_epochs} epochs')
+
     # total_loss = total_examples = 0
-    for epoch in range(num_of_epochs):
-        print(epoch + 1)
+    for epoch in tqdm(range(num_of_epochs)):
+        # print(epoch + 1)
         optimizer.zero_grad()
         out = model(data_train)
 
@@ -28,41 +31,78 @@ def train_model(model, optimizer, data_train):
         # print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
         # calculate metrics after final epoch
-        if epoch == num_of_epochs - 1:
-            tp = 0
-            tn = 0
-            fp = 0
-            fn = 0
+    
+    tp = 0
+    tn = 0
+    fp = 0
+    fn = 0
 
-            for i, el in enumerate(out):
-                # assume that 0.4 is enough to treat as real connection
-                if el < 0.4:
-                    el = 0
-                else:
-                    el = 1
+    for i, el in enumerate(out):
+        # assume that 0.5 is enough to treat as real connection
+        if el < 0.5:
+            el = 0
+        else:
+            el = 1
 
-                if data_train.edge_label[i] == 1:
-                    if el == 1:
-                        tp += 1
-                    else:
-                        fp += 1
+        if data_train.edge_label[i] == 1:
+            if el == 1:
+                tp += 1
+            else:
+                fp += 1
 
-                if data_train.edge_label[i] == 0:
-                    if el == 0:
-                        tn += 1
-                    else:
-                        fn += 1
+        if data_train.edge_label[i] == 0:
+            if el == 0:
+                tn += 1
+            else:
+                fn += 1
 
-            print("####")
-            print(f'Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
-            print(f'Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
-            print(f'Precision = TP / (TP + FP) = {tp / (tp + fp)}')
-            print(f'Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
-            print(f'Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
-            print("####")
+    print("####")
+    print(f'Training results after {num_of_epochs} epochs:')
+    print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
+    print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
+    print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
+    print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
+    print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
+    print("####")
 
 # TBA
-# def test_model()
+def test_model(model, data_test):
+    with torch.no_grad():
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
+
+        out = model(data_test)
+        for i, el in enumerate(out):
+            # assume that 0.5 is enough to treat as real connection
+            if el < 0.5:
+                el = 0
+            else:
+                el = 1
+
+            if data_test.edge_label[i] == 1:
+                if el == 1:
+                    tp += 1
+                else:
+                    fp += 1
+
+            if data_test.edge_label[i] == 0:
+                if el == 0:
+                    tn += 1
+                else:
+                    fn += 1
+
+
+        print("####")
+        print(f'Testing results after {100} epochs:')
+        print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
+        print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
+        print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
+        print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
+        print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
+        print("####")
+
 
 class SAGEConvModel(torch.nn.Module):
     def __init__(self, channels):
@@ -141,13 +181,17 @@ if __name__ == '__main__':
       #                                                        tracks_file_path='..\odd_output\event000000000-tracks_ambi.csv')
 
     # connecting events
-    data_train, data_test, data_val = prepare_graph_from_multiple_files(path='../odd_output', number_of_files=1)
+    data_train, data_test, data_val = prepare_graph_from_multiple_files(path='data', number_of_files=1)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = Model(GRUModel(channels=128)).to(device)
+    # print(device)
+
+    # model = Model(GRUModel(channels=128))#.to(device)
+    model = Model(GCNConvModel(channels=256))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(model, optimizer, data_train)
+    test_model(model, data_test)
 
     # print(F.binary_cross_entropy_with_logits(pred, data_test.edge_label))
