@@ -4,9 +4,57 @@ import torch
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch_geometric.transforms as T
+import numpy as np
+import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
+
+def calculate_metrics_for_model(model, data, title):
+    tp = 0
+    tn = 0
+    fp = 0
+    fn = 0
+
+    out = model(data)
+
+    for i, el in enumerate(out):
+        # assume that 0.5 is enough to treat as real connection
+        if el < 0.5:
+            el = 0
+        else:
+            el = 1
+
+        if data.edge_label[i] == 1:
+            if el == 1:
+                tp += 1
+            else:
+                fp += 1
+
+        if data.edge_label[i] == 0:
+            if el == 0:
+                tn += 1
+            else:
+                fn += 1
+
+    print("####")
+    print(title)
+    print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
+    print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
+    print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
+    print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
+    print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
+    print("####")
+
+def plot_loss(loss_function):
+    num_of_epochs = len(loss_function)
+    epochs = np.linspace(1, num_of_epochs, num_of_epochs)
+
+    plt.title('Loss function')
+    plt.plot(epochs, loss_function)
+    plt.xlabel('No. of epoch')
+    plt.ylabel('Loss')
+    plt.show()
 
 def train_model(model, optimizer, data_train):
     num_of_epochs = 100
@@ -14,6 +62,8 @@ def train_model(model, optimizer, data_train):
     model.train()
     
     print(f'Training model for {num_of_epochs} epochs')
+
+    loss_function = list()
 
     # total_loss = total_examples = 0
     for epoch in tqdm(range(num_of_epochs)):
@@ -24,6 +74,8 @@ def train_model(model, optimizer, data_train):
         loss = F.binary_cross_entropy_with_logits(out, data_train.edge_label)
         loss.backward()
 
+        loss_function.append(float(loss))
+
         optimizer.step()        
         # total_loss += float(loss) * out.numel()
         # total_examples += out.numel()
@@ -32,76 +84,12 @@ def train_model(model, optimizer, data_train):
 
         # calculate metrics after final epoch
     
-    tp = 0
-    tn = 0
-    fp = 0
-    fn = 0
+    calculate_metrics_for_model(model, data_train, f'Training results after {num_of_epochs} epochs')
+    plot_loss(loss_function)
 
-    for i, el in enumerate(out):
-        # assume that 0.5 is enough to treat as real connection
-        if el < 0.5:
-            el = 0
-        else:
-            el = 1
-
-        if data_train.edge_label[i] == 1:
-            if el == 1:
-                tp += 1
-            else:
-                fp += 1
-
-        if data_train.edge_label[i] == 0:
-            if el == 0:
-                tn += 1
-            else:
-                fn += 1
-
-    print("####")
-    print(f'Training results after {num_of_epochs} epochs:')
-    print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
-    print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
-    print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
-    print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
-    print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
-    print("####")
-
-# TBA
 def test_model(model, data_test):
     with torch.no_grad():
-        tp = 0
-        tn = 0
-        fp = 0
-        fn = 0
-
-        out = model(data_test)
-        for i, el in enumerate(out):
-            # assume that 0.5 is enough to treat as real connection
-            if el < 0.5:
-                el = 0
-            else:
-                el = 1
-
-            if data_test.edge_label[i] == 1:
-                if el == 1:
-                    tp += 1
-                else:
-                    fp += 1
-
-            if data_test.edge_label[i] == 0:
-                if el == 0:
-                    tn += 1
-                else:
-                    fn += 1
-
-
-        print("####")
-        print(f'Testing results after {100} epochs:')
-        print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
-        print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
-        print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
-        print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
-        print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
-        print("####")
+        calculate_metrics_for_model(model, data_test, f'Testing results')
 
 
 class SAGEConvModel(torch.nn.Module):
