@@ -10,6 +10,8 @@ from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
 
+NUM_OF_EPOCHS = 400
+
 def calculate_metrics_for_model(model, data, title):
     tp = 0
     tn = 0
@@ -47,8 +49,7 @@ def calculate_metrics_for_model(model, data, title):
     print("####")
 
 def plot_loss(loss_function):
-    num_of_epochs = len(loss_function)
-    epochs = np.linspace(1, num_of_epochs, num_of_epochs)
+    epochs = np.linspace(1, NUM_OF_EPOCHS, NUM_OF_EPOCHS)
 
     plt.title('Loss function')
     plt.plot(epochs, loss_function)
@@ -57,16 +58,14 @@ def plot_loss(loss_function):
     plt.show()
 
 def train_model(model, optimizer, data_train):
-    num_of_epochs = 100
-    
     model.train()
     
-    print(f'Training model for {num_of_epochs} epochs')
+    print(f'Training model for {NUM_OF_EPOCHS} epochs')
 
     loss_function = list()
 
     # total_loss = total_examples = 0
-    for epoch in tqdm(range(num_of_epochs)):
+    for epoch in tqdm(range(NUM_OF_EPOCHS)):
         # print(epoch + 1)
         optimizer.zero_grad()
         out = model(data_train)
@@ -84,7 +83,7 @@ def train_model(model, optimizer, data_train):
 
         # calculate metrics after final epoch
     
-    calculate_metrics_for_model(model, data_train, f'Training results after {num_of_epochs} epochs')
+    calculate_metrics_for_model(model, data_train, f'Training results after {NUM_OF_EPOCHS} epochs')
     plot_loss(loss_function)
 
 def test_model(model, data_test):
