@@ -67,6 +67,7 @@ def prepare_data_from_file(hits_file_path, tracks_file_path):
     x_s = df['tx'].values.tolist()
     y_s = df['ty'].values.tolist()
     z_s = df['tz'].values.tolist()
+    t_s = df['tt'].values.tolist()
 
     # Read all tracks and use them to construct edge_index
     df = pd.read_csv(tracks_file_path, engine='python', delimiter=',')
@@ -81,7 +82,9 @@ def prepare_data_from_file(hits_file_path, tracks_file_path):
     for track_list in tracks_lists:
         edge_list.extend([[track_list[i], track_list[i + 1]] for i in range(len(track_list) - 1)])
 
-    return x_s, y_s, z_s, edge_list
+    data = dict(x_s=x_s, y_s=y_s, z_s=z_s, t_s=t_s, edge_list=edge_list)
+
+    return data
 
 # CONTROVERSIAL!!!
 # Function preparing graph as connection of graphs from different events
@@ -91,6 +94,7 @@ def prepare_graph_from_multiple_files(path, number_of_files):
     x_all = list()
     y_all = list()
     z_all = list()
+    t_all = list()
     edge_all = list()
 
     hits_file = tracks_file = None
@@ -105,12 +109,13 @@ def prepare_graph_from_multiple_files(path, number_of_files):
             tracks_file = path + '/' + file_name
 
         if hits_file is not None and tracks_file is not None:
-            x_s, y_s, z_s, edge_list = prepare_data_from_file(hits_file, tracks_file)
+            data = prepare_data_from_file(hits_file, tracks_file)
 
-            x_all.extend(x_s)
-            y_all.extend(y_s)
-            z_all.extend(z_s)
-            edge_all.extend(edge_list)
+            x_all.extend(data['x_s'])
+            y_all.extend(data['y_s'])
+            z_all.extend(data['z_s'])
+            t_all.extend(data['t_s'])
+            edge_all.extend(data['edge_list'])
 
             iter += 1
 
@@ -123,16 +128,18 @@ def prepare_graph_from_multiple_files(path, number_of_files):
             break
     
     
-    node_features = torch.tensor([x_all, y_all, z_all], dtype=torch.float).t()
+    node_features = torch.tensor([x_all, y_all, z_all, t_all], dtype=torch.float).t()
     edge_index = torch.tensor(edge_all, dtype=torch.long).t()
 
     data = Data(node_features, edge_index)
     print(data)
-    transform = T.Compose([T.NormalizeFeatures(), T.RandomLinkSplit(add_negative_train_samples=True, disjoint_train_ratio=0.3)])
+    transform = T.Compose([T.NormalizeFeatures(), T.RandomLinkSplit(add_negative_train_samples=True, neg_sampling_ratio=30, disjoint_train_ratio=0.3)])
     train_data, val_data, test_data = transform(data)
 
     print(train_data)
     print(test_data)
     print(val_data)
+
+    print(sum(train_data.edge_label))
 
     return train_data, test_data, val_data

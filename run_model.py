@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
 
-NUM_OF_EPOCHS = 400
+NUM_OF_EPOCHS = 100
 
 def calculate_metrics_for_model(model, data, title):
     tp = 0
@@ -41,11 +41,13 @@ def calculate_metrics_for_model(model, data, title):
 
     print("####")
     print(title)
+    print(f'    TP={tp}, FP={fp}, TN={tn}, FN={fn}')
     print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
     print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
     print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
     print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
     print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
+    print(f'    F1 score = 2TP / (2TP + FP + FN) = {2*tp / (2*tp + fp + fn)}')
     print("####")
 
 def plot_loss(loss_function):
@@ -63,6 +65,8 @@ def train_model(model, optimizer, data_train):
     print(f'Training model for {NUM_OF_EPOCHS} epochs')
 
     loss_function = list()
+    pos_weight = torch.tensor([34])
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     # total_loss = total_examples = 0
     for epoch in tqdm(range(NUM_OF_EPOCHS)):
@@ -70,13 +74,13 @@ def train_model(model, optimizer, data_train):
         optimizer.zero_grad()
         out = model(data_train)
 
-        loss = F.binary_cross_entropy_with_logits(out, data_train.edge_label)
+        loss = criterion(out, data_train.edge_label)
         loss.backward()
 
         loss_function.append(float(loss))
 
         optimizer.step()        
-        # total_loss += float(loss) * out.numel()
+        # total_loss += float(loss) * out.numel(exit
         # total_examples += out.numel()
     
         # print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
@@ -94,7 +98,7 @@ def test_model(model, data_test):
 class SAGEConvModel(torch.nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = SAGEConv(3, channels)
+        self.conv1 = SAGEConv(4, channels)
         self.conv2 = SAGEConv(channels, channels)
         self.conv3 = SAGEConv(channels, channels)
 
@@ -111,7 +115,7 @@ class SAGEConvModel(torch.nn.Module):
 class GCNConvModel(torch.nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = GCNConv(3, channels)
+        self.conv1 = GCNConv(4, channels)
         self.conv2 = GCNConv(channels, channels)
         self.conv3 = GCNConv(channels, channels) 
 
@@ -175,7 +179,7 @@ if __name__ == '__main__':
     # print(device)
 
     # model = Model(GRUModel(channels=128))#.to(device)
-    model = Model(GCNConvModel(channels=256))
+    model = Model(SAGEConvModel(channels=256))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_model(model, optimizer, data_train)
