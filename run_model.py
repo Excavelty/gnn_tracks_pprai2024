@@ -180,14 +180,14 @@ class Model(torch.nn.Module):
 
 if __name__ == '__main__':
     # training based on single event
-    # data = prepare_graph_from_event(hits_file_path='data/event000000000-hits.csv',
-      #                                                        tracks_file_path='data/event000000000-tracks_ambi.csv')
+    data = prepare_graph_from_event(hits_file_path='data/event000000000-hits.csv',
+                                                             tracks_file_path='data/event000000000-tracks_ambi.csv')
 
 
-    # data_train, data_test, data_val = split_data(data)
+    data_train, data_test, data_val = split_data(data.to('cpu'))
 
     # connecting events
-    data_train, data_test, data_val = prepare_graph_from_multiple_files(path='data', number_of_files=1)
+    # data_train, data_test, data_val = prepare_graph_from_multiple_files(path='data', number_of_files=1)
 
     parser = argparse.ArgumentParser()
 
@@ -195,6 +195,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     model_type = args.model_type
+
+    print(f'Selected {model_type} model')
 
     if model_type == 'gru':
         model = Model(GRUModel(channels=128))

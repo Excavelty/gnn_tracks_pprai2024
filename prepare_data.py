@@ -45,11 +45,11 @@ def prepare_data_from_event(hits_file_path, tracks_file_path):
     return data
 
 def prepare_node_features_from_dict(data):
-    node_features = torch.tensor([data['x_s'], data['y_s'], data['z_s']])
+    node_features = torch.tensor([data['x_s'], data['y_s'], data['z_s']]).t()
     return node_features
 
 def prepare_edge_list_from_dict(data):
-    edge_list = data['edge_list']
+    edge_list = torch.tensor(data['edge_list']).t()
     return edge_list
 
 def split_data(data):
