@@ -48,7 +48,7 @@ def prepare_node_features_from_dict(data):
     node_features = torch.tensor([data['x_s'], data['y_s'], data['z_s']])
     return node_features
 
-def prepare_edge_list_from_dict():
+def prepare_edge_list_from_dict(data):
     edge_list = data['edge_list']
     return edge_list
 
