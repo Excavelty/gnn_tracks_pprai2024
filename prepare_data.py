@@ -17,49 +17,8 @@ seed_everything(1000)
 # and label them as 0s. The task is to check how well different architectures
 # will learn to distinguish between those labels 
 
-# function preparing input graph by taking one event (singe hits file and tracks_ambi file)
-def prepare_graph_from_file(hits_file_path, tracks_file_path):
-    # Read all hits from the file
-    df = pd.read_csv(hits_file_path, engine='python', delimiter=',')
-    
-    # Prepare features of graph nodes, hit will be treated as a node
-    x_s = df['tx'].values.tolist()
-    y_s = df['ty'].values.tolist()
-    z_s = df['tz'].values.tolist()
-
-    # squash into features tensor and transpose
-    node_features = torch.tensor([x_s, y_s, z_s], dtype=torch.float).t()
-
-    # Read all tracks and use them to construct edge_index
-    df = pd.read_csv(tracks_file_path, engine='python', delimiter=',')
-    filter = df['good/duplicate/fake'] == 'good'
-    
-    tracks_strings = df.where(filter)['Hits_ID'].tolist()
-    tracks_lists = [json.loads(str(track_string).replace(',]', ']')) for track_string in tracks_strings]
-
-    edge_list = list()
-
-    for track_list in tracks_lists:
-        # create edges between every two consecutive elements of the particle track
-        edge_list.extend([[track_list[i], track_list[i + 1]] for i in range(len(track_list) - 1)])
-
-    edge_index = torch.tensor(edge_list, dtype=torch.long).t()
-
-    print(edge_index.size())
-
-    data = Data(node_features, edge_index)
-    print(data)
-    transform = T.Compose([T.NormalizeFeatures(), T.RandomLinkSplit(add_negative_train_samples=True, disjoint_train_ratio=0.3)])
-    train_data, val_data, test_data = transform(data)
-
-    print(train_data)
-    print(test_data)
-    print(val_data)
-
-    return train_data, test_data, val_data
-
 # function preparing data from single pair of hits/tracks_ambi files
-def prepare_data_from_file(hits_file_path, tracks_file_path):
+def prepare_data_from_event(hits_file_path, tracks_file_path):
     # Read all hits from the file
     df = pd.read_csv(hits_file_path, engine='python', delimiter=',')
     
@@ -81,7 +40,36 @@ def prepare_data_from_file(hits_file_path, tracks_file_path):
     for track_list in tracks_lists:
         edge_list.extend([[track_list[i], track_list[i + 1]] for i in range(len(track_list) - 1)])
 
-    return x_s, y_s, z_s, edge_list
+    data = dict(x_s=x_s, y_s=y_s, z_s=z_s, edge_list=edge_list)
+
+    return data
+
+def prepare_node_features_from_dict(data):
+    node_features = torch.tensor([data['x_s'], data['y_s'], data['z_s']])
+    return node_features
+
+def prepare_edge_list_from_dict():
+    edge_list = data['edge_list']
+    return edge_list
+
+def split_data(data):
+    transform = T.Compose([T.NormalizeFeatures(), T.RandomLinkSplit(add_negative_train_samples=True, disjoint_train_ratio=0.3)])
+    train_data, val_data, test_data = transform(data)
+
+    return train_data, val_data, test_data
+
+def prepare_graph_from_event(hits_file_path, tracks_file_path):
+    data_dict = prepare_data_from_event(hits_file_path, tracks_file_path)
+    node_features = prepare_node_features_from_dict(data_dict)
+    edge_list = prepare_edge_list_from_dict(data_dict)
+
+    data = Data(node_features, edge_list)
+
+    return data
+
+def prepare_training_data_from_event(hits_file_path, tracks_file_path):
+    data = prepare_graph_from_event(hits_file_path, tracks_file_path)
+    return split_data(data)
 
 # CONTROVERSIAL!!!
 # Function preparing graph as connection of graphs from different events
@@ -105,12 +93,12 @@ def prepare_graph_from_multiple_files(path, number_of_files):
             tracks_file = path + '/' + file_name
 
         if hits_file is not None and tracks_file is not None:
-            x_s, y_s, z_s, edge_list = prepare_data_from_file(hits_file, tracks_file)
+            data_dict = prepare_data_from_event(hits_file, tracks_file)
 
-            x_all.extend(x_s)
-            y_all.extend(y_s)
-            z_all.extend(z_s)
-            edge_all.extend(edge_list)
+            x_all.extend(data_dict['x_s'])
+            y_all.extend(data_dict['y_s'])
+            z_all.extend(data_dict['z_s'])
+            edge_all.extend(data_dict['edge_list'])
 
             iter += 1
 
@@ -128,9 +116,8 @@ def prepare_graph_from_multiple_files(path, number_of_files):
 
     data = Data(node_features, edge_index)
     print(data)
-    transform = T.Compose([T.NormalizeFeatures(), T.RandomLinkSplit(add_negative_train_samples=True, disjoint_train_ratio=0.3)])
-    train_data, val_data, test_data = transform(data)
-
+    
+    train_data, test_data, val_data = split_data(data)
     print(train_data)
     print(test_data)
     print(val_data)

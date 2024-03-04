@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
-from prepare_data import prepare_data_from_file, prepare_graph_from_file, prepare_graph_from_multiple_files
+from prepare_data import prepare_graph_from_multiple_files
 
 NUM_OF_EPOCHS = 400
 
@@ -41,10 +41,12 @@ def calculate_metrics_for_model(model, data, title):
 
     print("####")
     print(title)
+    print(f'    TP={tp}, TN={tn}, FP={fp}, FN={fn}')
     print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
     print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
     print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
     print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
+    print(f'    F! score = {2*tp / (2*tp + fp + fn)}')
     print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
     print("####")
 
@@ -76,12 +78,6 @@ def train_model(model, optimizer, data_train):
         loss_function.append(float(loss))
 
         optimizer.step()        
-        # total_loss += float(loss) * out.numel()
-        # total_examples += out.numel()
-    
-        # print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
-
-        # calculate metrics after final epoch
     
     calculate_metrics_for_model(model, data_train, f'Training results after {NUM_OF_EPOCHS} epochs')
     plot_loss(loss_function)
