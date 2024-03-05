@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import argparse
 from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
-from prepare_data import prepare_graph_from_multiple_files, prepare_graph_from_event, split_data
+from prepare_data import prepare_graph_from_event, split_data
 
-NUM_OF_EPOCHS = 100
+NUM_OF_EPOCHS = 10
 
 def calculate_metrics_for_model(model, data, title):
     tp = 0
