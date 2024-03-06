@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 from torch_geometric.nn import SAGEConv, GCNConv, GatedGraphConv
 from prepare_data import prepare_graph_from_event, split_data
 
-NUM_OF_EPOCHS = 10
+NUM_OF_EPOCHS = 400
 
 def calculate_metrics_for_model(model, data, title):
     tp = 0
@@ -47,7 +47,7 @@ def calculate_metrics_for_model(model, data, title):
     print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
     print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
     print(f'    Negative predictive value = TN / (TN + FN) = {tn / (tn + fn)}')
-    print(f'    F! score = {2*tp / (2*tp + fp + fn)}')
+    print(f'    F1 score = {2*tp / (2*tp + fp + fn)}')
     print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
     print("####")
 
