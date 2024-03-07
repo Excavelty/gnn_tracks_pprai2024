@@ -32,17 +32,17 @@ def calculate_metrics_for_model(model, data, title):
             if el == 1:
                 tp += 1
             else:
-                fp += 1
+                fn += 1
 
         if data.edge_label[i] == 0:
             if el == 0:
                 tn += 1
             else:
-                fn += 1
+                fp += 1
 
     print("####")
     print(title)
-    print(f'    TP={tp}, TN={tn}, FP={fp}, FN={fn}')
+    print(f'    TP={tp}, FP={fp}, TN={tn}, FN={fn}')
     print(f'    Sensitivity = TP / (TP + FN) = {tp / (tp + fn)}')
     print(f'    Specificity = TN / (TN + FP) = {tn / (tn + fp)}')
     print(f'    Precision = TP / (TP + FP) = {tp / (tp + fp)}')
