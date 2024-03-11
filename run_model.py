@@ -54,11 +54,11 @@ def calculate_metrics_for_model(model, data, title):
 def plot_loss(all_loss, epochs_num):
     epochs = np.linspace(1, epochs_num, epochs_num)
 
-    plt.title('Loss function')
+    plt.title('Loss as a function of epoch No. for GatedGraphConv model')
     plt.plot(epochs, all_loss)
     plt.xlabel('No. of epoch')
     plt.ylabel('Loss')
-    plt.show()
+    plt.savefig('output/gru_loss.png')
 
 def train_model(model, optimizer, data_train, data_val):
     print(f'Training model for {NUM_OF_EPOCHS} epochs')
@@ -90,15 +90,14 @@ def train_model(model, optimizer, data_train, data_val):
             all_val_loss.append(val_loss)
 
             # early stopping, if val_loss is not better than any of the latest losses (up to 15 latest losses)
-            if all(val_loss >= previous_loss for previous_loss in all_val_loss[-6:-1]) and len(all_val_loss) > 5:
-                print(f'Early stopping in epoch {epoch}')
-                break
+            # if all(val_loss >= previous_loss for previous_loss in all_val_loss[-16:-1]) and len(all_val_loss) > 15:
+            #     print(f'Early stopping in epoch {epoch}')
+            #     break
 
     calculate_metrics_for_model(model, data_train, f'Training results after {NUM_OF_EPOCHS} epochs')
     plot_loss(all_train_loss, epoch + 1)
 
-    # save latest model
-    torch.save(model.state_dict(), 'latest_model.pth')
+    return model
 
 def test_model(model, data_test):
     with torch.no_grad():
@@ -184,17 +183,19 @@ if __name__ == '__main__':
                                                              tracks_file_path='data/event000000000-tracks_ambi.csv')
 
 
-    data_train, data_test, data_val = split_data(data.to('cpu'))
+    data_train, data_test, data_val = split_data(data)
 
     # connecting events
     # data_train, data_test, data_val = prepare_graph_from_multiple_files(path='data', number_of_files=1)
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--model_type', type=str, default='gcn', help='Type of model to run, available: gcn [default], gru, sage')
+    parser.add_argument('--model_type', type=str, default='gcn', help='Type of model to run, available: gcn [default], gru, sage.')
+    parser.add_argument('--output', type=str, default='latest_model.pth', help='Output file in .pth format to store trained model.')
 
     args = parser.parse_args()
     model_type = args.model_type
+    output = args.output
 
     print(f'Selected {model_type} model')
 
@@ -207,5 +208,9 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    train_model(model, optimizer, data_train, data_val)
+    model = train_model(model, optimizer, data_train, data_val)
+
+    # save latest model
+    torch.save(model.state_dict(), f'output/{output}')
+    
     test_model(model, data_test)
