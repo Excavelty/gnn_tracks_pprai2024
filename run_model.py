@@ -51,6 +51,8 @@ def calculate_metrics_for_model(model, data, title):
     print(f'    Accuracy = (TP + TN) / (TP + TN + FP + FN) = {(tp + tn) / (tp + tn + fp + fn)}')
     print("####")
 
+    return np.array([[tp, fp], [fn, tn]])
+
 def plot_loss(all_loss, epochs_num):
     epochs = np.linspace(1, epochs_num, epochs_num)
 
@@ -185,8 +187,10 @@ if __name__ == '__main__':
 
     data_train, data_test, data_val = split_data(data)
 
-    # connecting events
-    # data_train, data_test, data_val = prepare_graph_from_multiple_files(path='data', number_of_files=1)
+    print(f'Training data: {data_train}')
+    print(f'Testing data: {data_test}')
+    print(f'Validation data: {data_val}')
+    print(data_val)
 
     parser = argparse.ArgumentParser()
 
@@ -200,7 +204,7 @@ if __name__ == '__main__':
     print(f'Selected {model_type} model')
 
     if model_type == 'gru':
-        model = Model(GRUModel(channels=128))
+        model = Model(GRUModel(channels=64))
     elif model_type == 'sage':
         model = Model(SAGEConvModel(channels=256))
     else:
