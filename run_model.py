@@ -153,6 +153,7 @@ class GRUModel(torch.nn.Module):
         x = self.gru2(x, edge_index)
         x = F.relu(x)
         x = self.gru3(x, edge_index)
+        x = F.relu(x)
 
         return x 
 
